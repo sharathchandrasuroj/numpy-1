@@ -1,0 +1,11 @@
+Compilation issues
+==================
+
+Here we document common issues that occur when compiling numpy or scipy.
+
+
+OS X
+----
+::
+
+
