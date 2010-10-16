@@ -8,4 +8,13 @@ OS X
 ----
 ::
 
+  $ python2.5 setup.py install
+  ...
+  cc1: error: unrecognized command line option "-Wno-long-double"
+  ...
+  RuntimeError: Broken toolchain: cannot link a simple C program
+  
+The reason is that Python 2.5 expects gcc-4.0 to be the default compiler, not
+gcc-4.2 as on Snow Leopard. This should work::
 
+  $ CC=gcc-4.0 python2.5 setup.py install
