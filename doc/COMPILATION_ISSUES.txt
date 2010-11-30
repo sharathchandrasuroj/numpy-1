@@ -32,7 +32,22 @@ gcc-4.2 as on Snow Leopard. This should work::
   build/temp.macosx-10.3-fat-2.7/scipy/interpolate/src/_interpolate.o" failed
   with exit status 1
 
-XXX: check this is the case.
 This is due to c++ being c++-4.2 instead of c++-4.0. The solution is to either
 do ``$ export CXX=/usr/bin/c++-4.0`` or to softlink c++ to /usr/bin/c++-4.0 and
 put that link somewhere at the front of the PATH. 
+
+
+::
+
+  scipy/sparse/sparsetools/csr_wrap.cxx:2917: warning: too many arguments for format
+  scipy/sparse/sparsetools/csr_wrap.cxx: In function ‘int require_size(PyArrayObject*, npy_intp*, int)’:
+  scipy/sparse/sparsetools/csr_wrap.cxx:2910: error: expected `)' before ‘PRIdPTR’
+  scipy/sparse/sparsetools/csr_wrap.cxx:2910: warning: spurious trailing ‘%’ in format
+  scipy/sparse/sparsetools/csr_wrap.cxx:2910: warning: too many arguments for format
+  scipy/sparse/sparsetools/csr_wrap.cxx:2917: error: expected `)' before ‘PRIdPTR’
+  scipy/sparse/sparsetools/csr_wrap.cxx:2917: warning: spurious trailing ‘%’ in format
+  scipy/sparse/sparsetools/csr_wrap.cxx:2917: warning: too many arguments for format
+  error: Command "g++ -pthread -fno-strict-aliasing -g -O2 -DNDEBUG -g -fwrapv -O3 -Wall -fPIC -I/usr/local/lib/python2.7/site-packages/numpy/core/include -I/usr/local/include/python2.7 -c scipy/sparse/sparsetools/csr_wrap.cxx -o build/temp.linux-x86_64-2.7/scipy/sparse/sparsetools/csr_wrap.o" failed with exit status 1
+  
+This happens when trying to compile scipy 0.8.0 with Python 2.7. The error was
+fixed in trunk and in the 0.8.x branch, see r6646.
