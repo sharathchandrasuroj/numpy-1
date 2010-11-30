@@ -32,9 +32,10 @@ gcc-4.2 as on Snow Leopard. This should work::
   build/temp.macosx-10.3-fat-2.7/scipy/interpolate/src/_interpolate.o" failed
   with exit status 1
 
-This is due to c++ being c++-4.2 instead of c++-4.0. The solution is to either
-do ``$ export CXX=/usr/bin/c++-4.0`` or to softlink c++ to /usr/bin/c++-4.0 and
-put that link somewhere at the front of the PATH. 
+This is due to c++ being c++-4.2 instead of c++-4.0.  c++-4.2 does not work
+with the OS X 10.4 SDK. The solution is to either do ``$ export
+CXX=/usr/bin/c++-4.0`` or to softlink c++ to /usr/bin/c++-4.0 and put that link
+somewhere at the front of the PATH. 
 
 
 ::
