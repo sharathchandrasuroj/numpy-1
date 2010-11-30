@@ -66,3 +66,17 @@ This error typically occurs when the wrong compiler is specified in the build
 command (for example with ``--fcompiler=g95`` instead of ``--fcompiler=gnu``)
 or when the version determination for a compiler is failing. Debug steps can be
 found in scipy ticket #1331.
+
+
+::
+
+  ImportError: dlopen(/Library/Frameworks/Python.framework/Versions/2.6/lib/python2.6/site-packages/numpy/core/multiarray.so, 2): no suitable image found. Did find:
+    /Library/Frameworks/Python.framework/Versions/2.6/lib/python2.6/site-packages/numpy/core/multiarray.so: unknown required load command 0x80000022
+  
+This is due to a mismatch between the architectures of installed Python and
+numpy. For Python 2.7 we provide two binary installers, ending in 10.3 (ppc,
+i386) or 10.5 (ppc, i386, x86_64). The naming scheme on python.org is the same
+- you should use the matching installers.
+
+For older versions of numpy this error could also be caused by binaries
+compiled on OS X 10.6 being installed on PPC OS X 10.5.
