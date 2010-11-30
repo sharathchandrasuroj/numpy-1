@@ -51,3 +51,17 @@ put that link somewhere at the front of the PATH.
   
 This happens when trying to compile scipy 0.8.0 with Python 2.7. The error was
 fixed in trunk and in the 0.8.x branch, see r6646.
+
+
+::
+
+  customize UnixCCompiler using build_ext
+  customize G95FCompiler
+  warning: build_ext: f77_compiler=g95 is not available.
+  building 'scipy.interpolate.dfitpack' extension
+  error: extension 'scipy.interpolate.dfitpack' has Fortran sources but no Fortran compiler found
+
+This error typically occurs when the wrong compiler is specified in the build
+command (for example with ``--fcompiler=g95`` instead of ``--fcompiler=gnu``)
+or when the version determination for a compiler is failing. Debug steps can be
+found in scipy ticket #1331.
