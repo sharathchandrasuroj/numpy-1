@@ -75,7 +75,7 @@ found in scipy ticket #1331.
   
 This is due to a mismatch between the architectures of installed Python and
 numpy. For Python 2.7 we provide two binary installers, ending in 10.3 (ppc,
-i386) or 10.5 (ppc, i386, x86_64). The naming scheme on python.org is the same
+i386) or 10.6 (i386, x86_64). The naming scheme on python.org is the same
 - you should use the matching installers.
 
 For older versions of numpy this error could also be caused by binaries
