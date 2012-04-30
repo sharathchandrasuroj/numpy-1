@@ -13,6 +13,9 @@ import threading
 from tempfile import mkstemp, NamedTemporaryFile
 import time
 from datetime import datetime
+import warnings
+import gc
+from numpy.testing.utils import WarningManager
 
 from numpy.lib._iotools import ConverterError, ConverterLockError, \
                                ConversionWarning
@@ -238,6 +241,39 @@ class TestSaveTxt(TestCase):
         finally:
             os.unlink(name)
 
+    def test_complex_arrays(self):
+        ncols = 2
+        nrows = 2
+        a = np.zeros((ncols, nrows), dtype=np.complex128)
+        re = np.pi
+        im = np.e
+        a[:] = re + 1.0j * im
+        # One format only
+        c = StringIO()
+        np.savetxt(c, a, fmt=' %+.3e')
+        c.seek(0)
+        lines = c.readlines()
+        assert_equal(lines, asbytes_nested([
+            ' ( +3.142e+00+ +2.718e+00j)  ( +3.142e+00+ +2.718e+00j)\n',
+            ' ( +3.142e+00+ +2.718e+00j)  ( +3.142e+00+ +2.718e+00j)\n']))
+        # One format for each real and imaginary part
+        c = StringIO()
+        np.savetxt(c, a, fmt='  %+.3e' * 2 * ncols)
+        c.seek(0)
+        lines = c.readlines()
+        assert_equal(lines, asbytes_nested([
+            '  +3.142e+00  +2.718e+00  +3.142e+00  +2.718e+00\n',
+            '  +3.142e+00  +2.718e+00  +3.142e+00  +2.718e+00\n']))
+        # One format for each complex number
+        c = StringIO()
+        np.savetxt(c, a, fmt=['(%.3e%+.3ej)'] * ncols)
+        c.seek(0)
+        lines = c.readlines()
+        assert_equal(lines, asbytes_nested([
+            '(3.142e+00+2.718e+00j) (3.142e+00+2.718e+00j)\n',
+            '(3.142e+00+2.718e+00j) (3.142e+00+2.718e+00j)\n']))
+
+
 
 class TestLoadTxt(TestCase):
     def test_record(self):
@@ -392,6 +428,7 @@ class TestLoadTxt(TestCase):
         assert_array_equal(x, a)
 
     def test_empty_file(self):
+        warnings.filterwarnings("ignore", message="loadtxt: Empty input file:")
         c = StringIO()
         x = np.loadtxt(c)
         assert_equal(x.shape, (0,))
@@ -951,11 +988,17 @@ M   33  21.99
                              usecols=('a', 'c'), **kwargs)
         assert_equal(test, ctrl)
 
-
     def test_empty_file(self):
-        "Test that an empty file raises the proper exception"
-        data = StringIO()
-        assert_raises(IOError, np.ndfromtxt, data)
+        "Test that an empty file raises the proper warning."
+        warn_ctx = WarningManager()
+        warn_ctx.__enter__()
+        try:
+            warnings.filterwarnings("ignore", message="genfromtxt: Empty input file:")
+            data = StringIO()
+            test = np.genfromtxt(data)
+            assert_equal(test, np.array([]))
+        finally:
+            warn_ctx.__exit__()
 
 
     def test_fancy_dtype_alt(self):
@@ -1428,6 +1471,21 @@ def test_npzfile_dict():
         assert f in ['x', 'y']
 
     assert 'x' in list(z.iterkeys())
+
+def test_load_refcount():
+    # Check that objects returned by np.load are directly freed based on
+    # their refcount, rather than needing the gc to collect them.
+
+    f = StringIO()
+    np.savez(f, [1, 2, 3])
+    f.seek(0)
+
+    gc.collect()
+    n_before = len(gc.get_objects())
+    np.load(f)
+    n_after = len(gc.get_objects())
+
+    assert_equal(n_before, n_after)
 
 if __name__ == "__main__":
     run_module_suite()
