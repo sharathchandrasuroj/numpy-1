@@ -73,6 +73,15 @@ class was %s
 ============================================================================""")
                     raise distutils.errors.DistutilsPlatformError(msg)
 
+            # After MSVC is initialized, add an explicit /MANIFEST to linker
+            # flags.  See issues gh-4245 and gh-4101 for details.  Also
+            # relevant are issues 4431 and 16296 on the Python bug tracker.
+            if self.compiler.__version >= 10:
+                for ldflags in [self.compiler.ldflags_shared,
+                                self.compiler.ldflags_shared_debug]:
+                    if '/MANIFEST' not in ldflags:
+                        ldflags.append('/MANIFEST')
+
         if not isinstance(self.fcompiler, FCompiler):
             self.fcompiler = new_fcompiler(compiler=self.fcompiler,
                                            dry_run=self.dry_run, force=1,
