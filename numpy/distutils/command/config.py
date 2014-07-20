@@ -62,11 +62,12 @@ class config(old_config):
                     e = get_exception()
                     msg = """\
 Could not initialize compiler instance: do you have Visual Studio
-installed ? If you are trying to build with mingw, please use python setup.py
-build -c mingw32 instead ). If you have Visual Studio installed, check it is
-correctly installed, and the right version (VS 2008 for python 2.6, VS 2003 for
-2.5, etc...). Original exception was: %s, and the Compiler
-class was %s
+installed?  If you are trying to build with MinGW, please use "python setup.py
+build -c mingw32" instead.  If you have Visual Studio installed, check it is
+correctly installed, and the right version (VS 2008 for python 2.6, 2.7 and 3.2,
+VS 2010 for >= 3.3).
+
+Original exception was: %s, and the Compiler class was %s
 ============================================================================""" \
                         % (e, self.compiler.__class__.__name__)
                     print ("""\
