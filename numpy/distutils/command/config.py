@@ -77,7 +77,8 @@ Original exception was: %s, and the Compiler class was %s
             # After MSVC is initialized, add an explicit /MANIFEST to linker
             # flags.  See issues gh-4245 and gh-4101 for details.  Also
             # relevant are issues 4431 and 16296 on the Python bug tracker.
-            if self.compiler.__version >= 10:
+            from distutils import msvc9compiler
+            if msvc9compiler.get_build_version() >= 10:
                 for ldflags in [self.compiler.ldflags_shared,
                                 self.compiler.ldflags_shared_debug]:
                     if '/MANIFEST' not in ldflags:
