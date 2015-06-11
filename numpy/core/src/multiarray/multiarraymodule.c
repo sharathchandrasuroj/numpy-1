@@ -1142,19 +1142,24 @@ PyArray_CopyAndTranspose(PyObject *op)
  */
 static PyArrayObject*
 _pyarray_correlate(PyArrayObject *ap1, PyArrayObject *ap2, int typenum,
-                   int mode, int *inverted)
+                   int mode, int *inverted, int minlag, int maxlag, int lagstep)
 {
     PyArrayObject *ret;
     npy_intp length;
-    npy_intp i, n1, n2, n, n_left, n_right;
+    npy_intp i, n1, n2, n, n11;
+    npy_intp lag, tmplag, maxleft, maxright;
     npy_intp is1, is2, os;
     char *ip1, *ip2, *op;
     PyArray_DotFunc *dot;
 
     NPY_BEGIN_THREADS_DEF;
 
-    n1 = PyArray_DIMS(ap1)[0];
-    n2 = PyArray_DIMS(ap2)[0];
+    if (lagstep == NPY_MAX_INTP || lagstep == 0) {
+        lagstep = 1;
+    }
+
+    n1 = PyArray_DIMS(ap1)[0];      /* size of x */
+    n2 = PyArray_DIMS(ap2)[0];      /* size of y */
     if (n1 < n2) {
         ret = ap1;
         ap1 = ap2;
@@ -1163,40 +1168,67 @@ _pyarray_correlate(PyArrayObject *ap1, PyArrayObject *ap2, int typenum,
         i = n1;
         n1 = n2;
         n2 = i;
-        *inverted = 1;
-    } else {
-        *inverted = 0;
+        minlag = -minlag;
+        maxlag = -maxlag;
+        lagstep = -lagstep;
     }
 
-    length = n1;
-    n = n2;
+    if (maxlag == NPY_MAX_INTP || minlag == NPY_MAX_INTP) {
     switch(mode) {
-    case 0:
-        length = length - n + 1;
-        n_left = n_right = 0;
+    lagstep = 1;
+    case 0:         /* mode = 'valid' */
+        minlag = 0;
+        maxlag = n1 - n2 + 1;
         break;
-    case 1:
-        n_left = (npy_intp)(n/2);
-        n_right = n - n_left - 1;
+    case 1:         /* mode = 'same' */
+        minlag = -(npy_intp)(n2/2);
+        maxlag = n1 + minlag;
         break;
-    case 2:
-        n_right = n - 1;
-        n_left = n - 1;
-        length = length + n - 1;
+    case 2:         /* mode = 'full' */
+        minlag = -n2 + 1;
+        maxlag = n1;
+        break;
+    case 3:         /* mode = 'maxlag' */
+        if (maxlag == NPY_MAX_INTP) {
+            minlag = -n2 + 1;   /* nothing good to do with situation */
+            maxlag = n1;
+        }
+        else if (minlag == NPY_MAX_INTP) {
+            minlag = (maxlag > n2 ? -n2+1 : -maxlag+1);
+        }
         break;
     default:
-        PyErr_SetString(PyExc_ValueError, "mode must be 0, 1, or 2");
+        PyErr_SetString(PyExc_ValueError, "mode must be 0, 1, 2, or 3");
         return NULL;
+    }
+    }
+
+    if (lagstep < 0) {
+        *inverted = 1;
+        i = minlag;
+        minlag = (int)(npy_ceil((maxlag - minlag)/(float)lagstep))*lagstep + minlag - lagstep;
+        maxlag = i - lagstep;
+        lagstep = -lagstep;
+    }
+    else {
+        *inverted = 0;
+    }
+    if (maxlag <= minlag) {
+        length = 0;
+    }
+    else {
+        length = (maxlag - minlag + lagstep - 1)/lagstep;
     }
 
     /*
      * Need to choose an output array that can hold a sum
      * -- use priority to determine which subtype.
      */
-    ret = new_array_for_sum(ap1, ap2, NULL, 1, &length, typenum);
+    ret = new_array_for_sum(ap1, ap2, NULL, 1, &length, typenum);   /* answer */
     if (ret == NULL) {
         return NULL;
     }
+    PyArray_FILLWBYTE(ret, 0);
     dot = PyArray_DESCR(ret)->f->dotfunc;
     if (dot == NULL) {
         PyErr_SetString(PyExc_ValueError,
@@ -1205,36 +1237,44 @@ _pyarray_correlate(PyArrayObject *ap1, PyArrayObject *ap2, int typenum,
     }
 
     NPY_BEGIN_THREADS_DESCR(PyArray_DESCR(ret));
-    is1 = PyArray_STRIDES(ap1)[0];
-    is2 = PyArray_STRIDES(ap2)[0];
-    op = PyArray_DATA(ret);
-    os = PyArray_DESCR(ret)->elsize;
-    ip1 = PyArray_DATA(ap1);
-    ip2 = PyArray_BYTES(ap2) + n_left*is2;
-    n = n - n_left;
-    for (i = 0; i < n_left; i++) {
-        dot(ip1, is1, ip2, is2, op, n, ret);
-        n++;
-        ip2 -= is2;
-        op += os;
+    ip1 = PyArray_DATA(ap1);            /* x[0]             */
+    is1 = PyArray_STRIDES(ap1)[0];      /* x strides        */
+    ip2 = PyArray_DATA(ap2);            /* y[0]             */
+    is2 = PyArray_STRIDES(ap2)[0];      /* y strides        */
+    op = PyArray_DATA(ret);             /* answer data      */
+    os = PyArray_DESCR(ret)->elsize;    /* answer strides   */
+
+    lag = minlag;
+    maxleft = (0 < maxlag ? 0 : maxlag);
+    for (lag = minlag; lag < maxleft; lag+=lagstep) {      /* for lags where y is left of x */
+        n = n2 + lag;   /* overlap is length of y - lag */
+        dot(ip1, is1, ip2 - lag*is2, is2, op, n, ret);
+        op += os;       /* iterate over answer vector   */
     }
-    if (small_correlate(ip1, is1, n1 - n2 + 1, PyArray_TYPE(ap1),
-                        ip2, is2, n, PyArray_TYPE(ap2),
-                        op, os)) {
-        ip1 += is1 * (n1 - n2 + 1);
-        op += os * (n1 - n2 + 1);
+    if (maxlag < n1 - n2) { /* if maxlag doesn't take y all the way to the end of x */
+        n11 = maxlag + n2;      /* relevant length of x is smaller                  */
     }
     else {
-        for (i = 0; i < (n1 - n2 + 1); i++) {
-            dot(ip1, is1, ip2, is2, op, n, ret);
-            ip1 += is1;
+        n11 = n1;
+    }       /* starts at lag=minlag if minlag>0. Does lags where y entirely overlaps with x. */
+    if (lagstep == 1 && small_correlate(ip1 + lag*is1, is1, n11 - n2 + 1 - lag, PyArray_TYPE(ap1),
+                                        ip2, is2, n2, PyArray_TYPE(ap2),
+                                        op, os)) {
+        lag = n11 - n2 + 1;
+        op += os * (n11 - n2 + 1);
+    }
+    else {
+        tmplag = lag;
+        for (lag = tmplag; lag < (n11 - n2 + 1); lag+=lagstep) {
+            dot(ip1 + lag*is1, is1, ip2, is2, op, n2, ret);
             op += os;
         }
     }
-    for (i = 0; i < n_right; i++) {
-        n--;
-        dot(ip1, is1, ip2, is2, op, n, ret);
-        ip1 += is1;
+    maxright = (maxlag < n1  ? maxlag : n1 );
+    tmplag = lag;
+    for (lag = tmplag; lag < maxright; lag+=lagstep) {     /* for lags where y is right of x */
+        n = n1 - lag;
+        dot(ip1 + lag*is1, is1, ip2, is2, op, n, ret);
         op += os;
     }
 
@@ -1309,7 +1349,7 @@ _pyarray_revert(PyArrayObject *ret)
  * correlate(a2, a1), and conjugate the second argument for complex inputs
  */
 NPY_NO_EXPORT PyObject *
-PyArray_Correlate2(PyObject *op1, PyObject *op2, int mode)
+PyArray_Correlate2(PyObject *op1, PyObject *op2, int mode, int minlag, int maxlag, int lagstep)
 {
     PyArrayObject *ap1, *ap2, *ret = NULL;
     int typenum;
@@ -1344,7 +1384,7 @@ PyArray_Correlate2(PyObject *op1, PyObject *op2, int mode)
         ap2 = cap2;
     }
 
-    ret = _pyarray_correlate(ap1, ap2, typenum, mode, &inverted);
+    ret = _pyarray_correlate(ap1, ap2, typenum, mode, &inverted, minlag, maxlag, lagstep);
     if (ret == NULL) {
         goto clean_ap2;
     }
@@ -1377,7 +1417,7 @@ clean_ap1:
  * Numeric.correlate(a1,a2,mode)
  */
 NPY_NO_EXPORT PyObject *
-PyArray_Correlate(PyObject *op1, PyObject *op2, int mode)
+PyArray_Correlate(PyObject *op1, PyObject *op2, int mode, int minlag, int maxlag, int lagstep)
 {
     PyArrayObject *ap1, *ap2, *ret = NULL;
     int typenum;
@@ -1401,7 +1441,7 @@ PyArray_Correlate(PyObject *op1, PyObject *op2, int mode)
         goto fail;
     }
 
-    ret = _pyarray_correlate(ap1, ap2, typenum, mode, &unused);
+    ret = _pyarray_correlate(ap1, ap2, typenum, mode, &unused, minlag, maxlag, lagstep);
     if(ret == NULL) {
         goto fail;
     }
@@ -2896,28 +2936,28 @@ static PyObject *
 array_correlate(PyObject *NPY_UNUSED(dummy), PyObject *args, PyObject *kwds)
 {
     PyObject *shape, *a0;
-    int mode = 0;
-    static char *kwlist[] = {"a", "v", "mode", NULL};
+    int mode = 0, maxlag = NPY_MAX_INTP, minlag = NPY_MAX_INTP, lagstep = NPY_MAX_INTP;
+    static char *kwlist[] = {"a", "v", "mode", "minlag", "maxlag", "lagstep", NULL};
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OO|i", kwlist,
-                &a0, &shape, &mode)) {
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OO|iiii", kwlist,
+                &a0, &shape, &mode, &minlag, &maxlag, &lagstep)) {
         return NULL;
     }
-    return PyArray_Correlate(a0, shape, mode);
+    return PyArray_Correlate(a0, shape, mode, minlag, maxlag, lagstep);
 }
 
-static PyObject*
+static PyObject *
 array_correlate2(PyObject *NPY_UNUSED(dummy), PyObject *args, PyObject *kwds)
 {
     PyObject *shape, *a0;
-    int mode = 0;
-    static char *kwlist[] = {"a", "v", "mode", NULL};
+    int mode = 0, maxlag = NPY_MAX_INTP, minlag = NPY_MAX_INTP, lagstep = NPY_MAX_INTP;
+    static char *kwlist[] = {"a", "v", "mode", "minlag", "maxlag", "lagstep", NULL};
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OO|i", kwlist,
-                &a0, &shape, &mode)) {
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OO|iiii", kwlist,
+                &a0, &shape, &mode, &minlag, &maxlag, &lagstep)) {
         return NULL;
     }
-    return PyArray_Correlate2(a0, shape, mode);
+    return PyArray_Correlate2(a0, shape, mode, minlag, maxlag, lagstep);
 }
 
 static PyObject *

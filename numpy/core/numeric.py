@@ -8,7 +8,7 @@ from numpy.core import multiarray
 from . import umath
 from .umath import (invert, sin, UFUNC_BUFSIZE_DEFAULT, ERR_IGNORE,
                     ERR_WARN, ERR_RAISE, ERR_CALL, ERR_PRINT, ERR_LOG,
-                    ERR_DEFAULT, PINF, NAN)
+                    ERR_DEFAULT, PINF, NAN, ceil)
 from . import numerictypes
 from .numerictypes import longlong, intc, int_, float_, complex_, bool_
 
@@ -398,7 +398,8 @@ matmul = multiarray.matmul
 
 
 def asarray(a, dtype=None, order=None):
-    """Convert the input to an array.
+    """
+    Convert the input to an array.
 
     Parameters
     ----------
@@ -409,9 +410,8 @@ def asarray(a, dtype=None, order=None):
     dtype : data-type, optional
         By default, the data-type is inferred from the input data.
     order : {'C', 'F'}, optional
-        Whether to use row-major (C-style) or
-        column-major (Fortran-style) memory representation.
-        Defaults to 'C'.
+        Whether to use row-major ('C') or column-major ('F' for FORTRAN)
+        memory representation.  Defaults to 'C'.
 
     Returns
     -------
@@ -468,7 +468,8 @@ def asarray(a, dtype=None, order=None):
     return array(a, dtype, copy=False, order=order)
 
 def asanyarray(a, dtype=None, order=None):
-    """Convert the input to an ndarray, but pass ndarray subclasses through.
+    """
+    Convert the input to an ndarray, but pass ndarray subclasses through.
 
     Parameters
     ----------
@@ -479,8 +480,8 @@ def asanyarray(a, dtype=None, order=None):
     dtype : data-type, optional
         By default, the data-type is inferred from the input data.
     order : {'C', 'F'}, optional
-        Whether to use row-major (C-style) or column-major
-        (Fortran-style) memory representation.  Defaults to 'C'.
+        Whether to use row-major ('C') or column-major ('F') memory
+        representation.  Defaults to 'C'.
 
     Returns
     -------
@@ -830,7 +831,34 @@ def _mode_from_name(mode):
         return _mode_from_name_dict[mode.lower()[0]]
     return mode
 
-def correlate(a, v, mode='valid'):
+def _lags_from_mode(alen, vlen, mode):
+    if type(mode) is int:       # maxlag
+        lags = (-mode+1, mode, 1)
+        mode = 3
+    elif type(mode) is tuple:     # minlag and maxlag
+        if len(mode) > 2:
+            lags = (int(mode[0]), int(mode[1]), int(mode[2]))
+        else:
+            lags = (int(mode[0]), int(mode[1]), 1)
+        mode = 3
+    elif isinstance(mode, basestring):
+        mode = _mode_from_name_dict[mode.lower()[0]]
+        if alen < vlen:
+            alen, vlen = vlen, alen
+            inverted = 1
+        else:
+            inverted = 0
+        if mode is 0:
+            lags = (0, alen-vlen+1, 1)
+        elif mode is 1:
+            lags = (-int(vlen/2), alen - int(vlen/2), 1)
+        elif mode is 2:
+            lags = (-vlen+1, alen, 1)
+        if inverted:
+            lags = (-int(ceil((lags[1]-lags[0])/float(lags[2])))*lags[2]-lags[0]+lags[2], -lags[0]+lags[2], lags[2])
+    return mode, lags
+
+def correlate(a, v, mode='valid', old_behavior=False, lagvector=False):
     """
     Cross-correlation of two 1-dimensional sequences.
 
@@ -846,22 +874,32 @@ def correlate(a, v, mode='valid'):
     ----------
     a, v : array_like
         Input sequences.
-    mode : {'valid', 'same', 'full'}, optional
+    mode : int, int tuple, or {'valid', 'same', 'full'}, optional
         Refer to the `convolve` docstring.  Note that the default
         is `valid`, unlike `convolve`, which uses `full`.
-    old_behavior : bool
-        `old_behavior` was removed in NumPy 1.10. If you need the old
-        behavior, use `multiarray.correlate`.
+    old_behavior : bool, optional
+        If True, uses the old behavior from Numeric,
+        (correlate(a,v) == correlate(v,a), and the conjugate is not taken
+        for complex arrays). If False, uses the conventional signal
+        processing definition.  False is default.
+    lagvector : bool, optional
+        If True, the function returns a lagvector array in addition to the
+        cross-correlation result.  The lagvector contains the indices of
+        the lags for which the cross-correlation was calculated.  It is
+        the same length as the return array, and corresponds one-to-one.
+        False is default.
 
     Returns
     -------
     out : ndarray
         Discrete cross-correlation of `a` and `v`.
+    lagvector : ndarray, optional
+        The indices of the lags for which the cross-correlation was calculated.
+        It is the same length as out, and corresponds one-to-one.
 
     See Also
     --------
     convolve : Discrete, linear convolution of two one-dimensional sequences.
-    multiarray.correlate : Old, no conjugate, version of correlate.
 
     Notes
     -----
@@ -876,10 +914,14 @@ def correlate(a, v, mode='valid'):
     --------
     >>> np.correlate([1, 2, 3], [0, 1, 0.5])
     array([ 3.5])
-    >>> np.correlate([1, 2, 3], [0, 1, 0.5], "same")
+    >>> np.correlate([1, 2, 3], [0, 1, 0.5], mode="same")
     array([ 2. ,  3.5,  3. ])
-    >>> np.correlate([1, 2, 3], [0, 1, 0.5], "full")
-    array([ 0.5,  2. ,  3.5,  3. ,  0. ])
+    >>> np.correlate([1, 2, 3], [0, 1, 0.5], mode="full", lagvector=True)
+    (array([ 0.5,  2. ,  3.5,  3. ,  0. ]), array([-2, -1,  0,  1,  2]))
+    >>> np.correlate([1, 2, 3], [0, 1, 0.5], mode=2)
+    array([ 2. ,  3.5,  3. ])
+    >>> np.correlate([1, 2, 3], [0, 1, 0.5], mode=(-1,2,2), lagvector=True)
+    (array([ 2.,  3.]), array([-1,  1]))
 
     Using complex sequences:
 
@@ -894,10 +936,29 @@ def correlate(a, v, mode='valid'):
     array([ 0.0+0.j ,  3.0+1.j ,  1.5+1.5j,  1.0+0.j ,  0.5+0.5j])
 
     """
-    mode = _mode_from_name(mode)
-    return multiarray.correlate2(a, v, mode)
+    mode, lags = _lags_from_mode(len(a), len(v), mode)
 
-def convolve(a,v,mode='full'):
+# the old behavior should be made available under a different name, see thread
+# http://thread.gmane.org/gmane.comp.python.numeric.general/12609/focus=12630
+    if old_behavior:
+        warnings.warn("""
+The old behavior of correlate was deprecated for 1.4.0, and will be completely removed
+for NumPy 2.0.
+
+The new behavior fits the conventional definition of correlation: inputs are
+never swapped, and the second argument is conjugated for complex arrays.""",
+            DeprecationWarning)
+        if lagvector:
+            return multiarray.correlate(a, v, mode, lags[0], lags[1], lags[2]), arange(lags[0], lags[1], lags[2])
+        else:
+            return multiarray.correlate(a, v, mode, lags[0], lags[1], lags[2])
+    else:
+        if lagvector:
+            return multiarray.correlate2(a, v, mode, lags[0], lags[1], lags[2]), arange(lags[0], lags[1], lags[2])
+        else:
+            return multiarray.correlate2(a, v, mode, lags[0], lags[1], lags[2])
+
+def convolve(a, v, mode='full', lagvector=False):
     """
     Returns the discrete, linear convolution of two one-dimensional sequences.
 
@@ -915,27 +976,53 @@ def convolve(a,v,mode='full'):
         First one-dimensional input array.
     v : (M,) array_like
         Second one-dimensional input array.
-    mode : {'full', 'valid', 'same'}, optional
+    mode : int, int tuple, or {'full', 'valid', 'same'}, optional
+        int (maxlag):
+          This calculates the convolution for all lags starting at
+          (-maxlag + 1) and ending at (maxlag - 1), with steps of size 1.
+          See the optional lagvec argument to get an array containing
+          lags corresponding to the convolution values in the return array.
+
+        tuple (minlag, maxlag) or (minlag, maxlag, lagstep):
+          This calculates the convolution for all lags starting at
+          minlag and ending at (maxlag - 1), with steps of size lagstep.
+          The lags for which the convolution will be calculated correspond
+          with the values in the vector formed by numpy.arange() with the
+          same tuple argument.
+
         'full':
           By default, mode is 'full'.  This returns the convolution
           at each point of overlap, with an output shape of (N+M-1,). At
           the end-points of the convolution, the signals do not overlap
-          completely, and boundary effects may be seen.
+          completely, and boundary effects may be seen.  This corresponds
+          with a lag tuple of (-M+1, N-1, 1) for N>M or (-N+1, M+1, 1)
+          for M>N.
 
         'same':
           Mode `same` returns output of length ``max(M, N)``.  Boundary
-          effects are still visible.
+          effects are still visible. This corresponds with a lag tuple of
+          (-M/2, N-M/2, 1) for N>M or (-M+N/2+1, N/2+1, 1) for M>N.
 
         'valid':
           Mode `valid` returns output of length
           ``max(M, N) - min(M, N) + 1``.  The convolution product is only given
           for points where the signals overlap completely.  Values outside
-          the signal boundary have no effect.
+          the signal boundary have no effect. This corresponds with a lag tuple
+          of (0, N-M+1, 1) for N>M or (-M+N, 1, 1) for M>N.
+    lagvector : bool, optional
+        If True, the function returns a lagvector array in addition to the
+        convolution result.  The lagvector contains the indices of
+        the lags for which the convolution was calculated.  It is
+        the same length as the return array, and corresponds one-to-one.
+        False is default.
 
     Returns
     -------
     out : ndarray
         Discrete, linear convolution of `a` and `v`.
+    lagvector : ndarray, optional
+        The indices of the lags for which the convolution was calculated.
+        It is the same length as out, and corresponds one-to-one.
 
     See Also
     --------
@@ -974,14 +1061,34 @@ def convolve(a,v,mode='full'):
     Contains boundary effects, where zeros are taken
     into account:
 
-    >>> np.convolve([1,2,3],[0,1,0.5], 'same')
+    >>> np.convolve([1,2,3],[0,1,0.5], mode='same')
     array([ 1. ,  2.5,  4. ])
 
     The two arrays are of the same length, so there
-    is only one position where they completely overlap:
+    is only one position where they completely overlap,
+    corresponding to a lag of 0.  lagvector=True causes
+    the function to return the lagvector corresponding
+    to the convolution in addition to the convolution
+    itself:
 
-    >>> np.convolve([1,2,3],[0,1,0.5], 'valid')
-    array([ 2.5])
+    >>> np.convolve([1,2,3],[0,1,0.5], mode='valid', lagvector=True)
+    (array([ 2.5]), array([0]))
+
+    Find the convolution for lags ranging from -1 to 1
+    (0 is the lag for which the left sides of the arrays
+    are aligned, -1 has the second vector to the left of
+    the first, and +1 has the second vector to the right
+    of the first):
+
+    >>> np.convolve([1,2,3],[0,1,0.5], mode=2, lagvector=True)
+    (array([ 1. ,  2.5,  4. ]), array([-1,  0,  1]))
+
+    Find the convolution for lags ranging from -2 to 4
+    with steps of length 2 (the maxlag member of the
+    lag range tuple is non-inclusive, similar to np.arange()):
+
+    >>> np.convolve([1,2,3,4,5],[0,1,0.5], mode=(-2,6,2), lagvector=True)
+    (array([ 0. ,  2.5,  5.5,  2.5]), array([-2,  0,  2,  4]))
 
     """
     a, v = array(a, copy=False, ndmin=1), array(v, copy=False, ndmin=1)
@@ -991,8 +1098,11 @@ def convolve(a,v,mode='full'):
         raise ValueError('a cannot be empty')
     if len(v) == 0 :
         raise ValueError('v cannot be empty')
-    mode = _mode_from_name(mode)
-    return multiarray.correlate(a, v[::-1], mode)
+    mode, lags = _lags_from_mode(len(a), len(v), mode)
+    if lagvector:
+        return multiarray.correlate2(a, v[::-1], mode, lags[0], lags[1], lags[2]), arange(lags[0], lags[1], lags[2])
+    else:
+        return multiarray.correlate2(a, v[::-1], mode, lags[0], lags[1], lags[2])
 
 def outer(a, b, out=None):
     """
@@ -1100,7 +1210,6 @@ def alterdot():
     restoredot : `restoredot` undoes the effects of `alterdot`.
 
     """
-    # 2014-08-13, 1.10
     warnings.warn("alterdot no longer does anything.", DeprecationWarning)
 
 
@@ -1124,7 +1233,6 @@ def restoredot():
     alterdot : `restoredot` undoes the effects of `alterdot`.
 
     """
-    # 2014-08-13, 1.10
     warnings.warn("restoredot no longer does anything.", DeprecationWarning)
 
 
