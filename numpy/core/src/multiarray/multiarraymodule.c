@@ -1142,7 +1142,7 @@ PyArray_CopyAndTranspose(PyObject *op)
  */
 static PyArrayObject*
 _pyarray_correlate(PyArrayObject *ap1, PyArrayObject *ap2, int typenum,
-                   int mode, int *inverted, int minlag, int maxlag, int lagstep)
+                   int mode, int *inverted, npy_intp minlag, npy_intp maxlag, npy_intp lagstep)
 {
     PyArrayObject *ret;
     npy_intp length;
@@ -1206,7 +1206,7 @@ _pyarray_correlate(PyArrayObject *ap1, PyArrayObject *ap2, int typenum,
     if (lagstep < 0) {
         *inverted = 1;
         i = minlag;
-        minlag = (int)(npy_ceil((maxlag - minlag)/(float)lagstep))*lagstep + minlag - lagstep;
+        minlag = (npy_intp)(npy_ceil((maxlag - minlag)/(float)lagstep))*lagstep + minlag - lagstep;
         maxlag = i - lagstep;
         lagstep = -lagstep;
     }
@@ -1349,7 +1349,7 @@ _pyarray_revert(PyArrayObject *ret)
  * correlate(a2, a1), and conjugate the second argument for complex inputs
  */
 NPY_NO_EXPORT PyObject *
-PyArray_Correlate2(PyObject *op1, PyObject *op2, int mode, int minlag, int maxlag, int lagstep)
+PyArray_Correlate2(PyObject *op1, PyObject *op2, int mode, npy_intp minlag, npy_intp maxlag, npy_intp lagstep)
 {
     PyArrayObject *ap1, *ap2, *ret = NULL;
     int typenum;
@@ -1417,7 +1417,7 @@ clean_ap1:
  * Numeric.correlate(a1,a2,mode)
  */
 NPY_NO_EXPORT PyObject *
-PyArray_Correlate(PyObject *op1, PyObject *op2, int mode, int minlag, int maxlag, int lagstep)
+PyArray_Correlate(PyObject *op1, PyObject *op2, int mode, npy_intp minlag, npy_intp maxlag, npy_intp lagstep)
 {
     PyArrayObject *ap1, *ap2, *ret = NULL;
     int typenum;
@@ -2936,10 +2936,11 @@ static PyObject *
 array_correlate(PyObject *NPY_UNUSED(dummy), PyObject *args, PyObject *kwds)
 {
     PyObject *shape, *a0;
-    int mode = 0, maxlag = NPY_MAX_INTP, minlag = NPY_MAX_INTP, lagstep = NPY_MAX_INTP;
+    int mode = 0;
+    npy_intp maxlag = NPY_MAX_INTP, minlag = NPY_MAX_INTP, lagstep = NPY_MAX_INTP;
     static char *kwlist[] = {"a", "v", "mode", "minlag", "maxlag", "lagstep", NULL};
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OO|iiii", kwlist,
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OO|innn", kwlist,
                 &a0, &shape, &mode, &minlag, &maxlag, &lagstep)) {
         return NULL;
     }
@@ -2950,10 +2951,12 @@ static PyObject *
 array_correlate2(PyObject *NPY_UNUSED(dummy), PyObject *args, PyObject *kwds)
 {
     PyObject *shape, *a0;
-    int mode = 0, maxlag = NPY_MAX_INTP, minlag = NPY_MAX_INTP, lagstep = NPY_MAX_INTP;
+    int mode = 0;
+    npy_intp maxlag = NPY_MAX_INTP, minlag = NPY_MAX_INTP, lagstep = NPY_MAX_INTP;
+    PyObject *tmp;
     static char *kwlist[] = {"a", "v", "mode", "minlag", "maxlag", "lagstep", NULL};
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OO|iiii", kwlist,
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OO|innn", kwlist,
                 &a0, &shape, &mode, &minlag, &maxlag, &lagstep)) {
         return NULL;
     }

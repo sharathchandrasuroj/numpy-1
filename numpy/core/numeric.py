@@ -858,7 +858,7 @@ def _lags_from_mode(alen, vlen, mode):
             lags = (-int(ceil((lags[1]-lags[0])/float(lags[2])))*lags[2]-lags[0]+lags[2], -lags[0]+lags[2], lags[2])
     return mode, lags
 
-def correlate(a, v, mode='valid', old_behavior=False, lagvector=False):
+def correlate(a, v, mode='valid', old_behavior=False, returns_lags=False):
     """
     Cross-correlation of two 1-dimensional sequences.
 
@@ -882,7 +882,7 @@ def correlate(a, v, mode='valid', old_behavior=False, lagvector=False):
         (correlate(a,v) == correlate(v,a), and the conjugate is not taken
         for complex arrays). If False, uses the conventional signal
         processing definition.  False is default.
-    lagvector : bool, optional
+    returns_lags : bool, optional
         If True, the function returns a lagvector array in addition to the
         cross-correlation result.  The lagvector contains the indices of
         the lags for which the cross-correlation was calculated.  It is
@@ -916,11 +916,11 @@ def correlate(a, v, mode='valid', old_behavior=False, lagvector=False):
     array([ 3.5])
     >>> np.correlate([1, 2, 3], [0, 1, 0.5], mode="same")
     array([ 2. ,  3.5,  3. ])
-    >>> np.correlate([1, 2, 3], [0, 1, 0.5], mode="full", lagvector=True)
+    >>> np.correlate([1, 2, 3], [0, 1, 0.5], mode="full", returns_lags=True)
     (array([ 0.5,  2. ,  3.5,  3. ,  0. ]), array([-2, -1,  0,  1,  2]))
     >>> np.correlate([1, 2, 3], [0, 1, 0.5], mode=2)
     array([ 2. ,  3.5,  3. ])
-    >>> np.correlate([1, 2, 3], [0, 1, 0.5], mode=(-1,2,2), lagvector=True)
+    >>> np.correlate([1, 2, 3], [0, 1, 0.5], mode=(-1,2,2), returns_lags=True)
     (array([ 2.,  3.]), array([-1,  1]))
 
     Using complex sequences:
@@ -948,17 +948,17 @@ for NumPy 2.0.
 The new behavior fits the conventional definition of correlation: inputs are
 never swapped, and the second argument is conjugated for complex arrays.""",
             DeprecationWarning)
-        if lagvector:
+        if returns_lags:
             return multiarray.correlate(a, v, mode, lags[0], lags[1], lags[2]), arange(lags[0], lags[1], lags[2])
         else:
             return multiarray.correlate(a, v, mode, lags[0], lags[1], lags[2])
     else:
-        if lagvector:
+        if returns_lags:
             return multiarray.correlate2(a, v, mode, lags[0], lags[1], lags[2]), arange(lags[0], lags[1], lags[2])
         else:
             return multiarray.correlate2(a, v, mode, lags[0], lags[1], lags[2])
 
-def convolve(a, v, mode='full', lagvector=False):
+def convolve(a, v, mode='full', returns_lags=False):
     """
     Returns the discrete, linear convolution of two one-dimensional sequences.
 
@@ -1009,7 +1009,7 @@ def convolve(a, v, mode='full', lagvector=False):
           for points where the signals overlap completely.  Values outside
           the signal boundary have no effect. This corresponds with a lag tuple
           of (0, N-M+1, 1) for N>M or (-M+N, 1, 1) for M>N.
-    lagvector : bool, optional
+    returns_lags : bool, optional
         If True, the function returns a lagvector array in addition to the
         convolution result.  The lagvector contains the indices of
         the lags for which the convolution was calculated.  It is
@@ -1071,7 +1071,7 @@ def convolve(a, v, mode='full', lagvector=False):
     to the convolution in addition to the convolution
     itself:
 
-    >>> np.convolve([1,2,3],[0,1,0.5], mode='valid', lagvector=True)
+    >>> np.convolve([1,2,3],[0,1,0.5], mode='valid', returns_lags=True)
     (array([ 2.5]), array([0]))
 
     Find the convolution for lags ranging from -1 to 1
@@ -1080,14 +1080,14 @@ def convolve(a, v, mode='full', lagvector=False):
     the first, and +1 has the second vector to the right
     of the first):
 
-    >>> np.convolve([1,2,3],[0,1,0.5], mode=2, lagvector=True)
+    >>> np.convolve([1,2,3],[0,1,0.5], mode=2, returns_lags=True)
     (array([ 1. ,  2.5,  4. ]), array([-1,  0,  1]))
 
     Find the convolution for lags ranging from -2 to 4
     with steps of length 2 (the maxlag member of the
     lag range tuple is non-inclusive, similar to np.arange()):
 
-    >>> np.convolve([1,2,3,4,5],[0,1,0.5], mode=(-2,6,2), lagvector=True)
+    >>> np.convolve([1,2,3,4,5],[0,1,0.5], mode=(-2,6,2), returns_lags=True)
     (array([ 0. ,  2.5,  5.5,  2.5]), array([-2,  0,  2,  4]))
 
     """
@@ -1099,7 +1099,7 @@ def convolve(a, v, mode='full', lagvector=False):
     if len(v) == 0 :
         raise ValueError('v cannot be empty')
     mode, lags = _lags_from_mode(len(a), len(v), mode)
-    if lagvector:
+    if returns_lags:
         return multiarray.correlate2(a, v[::-1], mode, lags[0], lags[1], lags[2]), arange(lags[0], lags[1], lags[2])
     else:
         return multiarray.correlate2(a, v[::-1], mode, lags[0], lags[1], lags[2])
