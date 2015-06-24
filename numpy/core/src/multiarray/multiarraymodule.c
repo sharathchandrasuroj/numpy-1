@@ -1142,11 +1142,12 @@ PyArray_CopyAndTranspose(PyObject *op)
  */
 static PyArrayObject*
 _pyarray_correlate(PyArrayObject *ap1, PyArrayObject *ap2, int typenum,
-                   int mode, int *inverted, npy_intp minlag, npy_intp maxlag, npy_intp lagstep)
+                   int mode, int *inverted,
+                   npy_intp minlag, npy_intp maxlag, npy_intp lagstep)
 {
     PyArrayObject *ret;
     npy_intp length;
-    npy_intp i, n1, n2, n, n11;
+    npy_intp i, i1, n1, n2, n, n11;
     npy_intp lag, tmplag, maxleft, maxright;
     npy_intp is1, is2, os;
     char *ip1, *ip2, *op;
@@ -1176,21 +1177,26 @@ _pyarray_correlate(PyArrayObject *ap1, PyArrayObject *ap2, int typenum,
     if (maxlag == NPY_MAX_INTP || minlag == NPY_MAX_INTP) {
     switch(mode) {
     lagstep = 1;
-    case 0:         /* mode = 'valid' */
+    case 0:
+        /* mode = 'valid' */
         minlag = 0;
         maxlag = n1 - n2 + 1;
         break;
-    case 1:         /* mode = 'same' */
+    case 1:
+        /* mode = 'same' */
         minlag = -(npy_intp)(n2/2);
         maxlag = n1 + minlag;
         break;
-    case 2:         /* mode = 'full' */
+    case 2:
+        /* mode = 'full' */
         minlag = -n2 + 1;
         maxlag = n1;
         break;
-    case 3:         /* mode = 'maxlag' */
+    case 3:
+        /* mode = 'maxlag' */
         if (maxlag == NPY_MAX_INTP) {
-            minlag = -n2 + 1;   /* nothing good to do with situation */
+            /* nothing good to do with situation */
+            minlag = -n2 + 1;
             maxlag = n1;
         }
         else if (minlag == NPY_MAX_INTP) {
@@ -1206,7 +1212,8 @@ _pyarray_correlate(PyArrayObject *ap1, PyArrayObject *ap2, int typenum,
     if (lagstep < 0) {
         *inverted = 1;
         i = minlag;
-        minlag = (npy_intp)(npy_ceil((maxlag - minlag)/(float)lagstep))*lagstep + minlag - lagstep;
+        i1 = (npy_intp)(npy_ceil((maxlag - minlag)/(float)lagstep))*lagstep;
+        minlag =  i1 + minlag - lagstep;
         maxlag = i - lagstep;
         lagstep = -lagstep;
     }
@@ -1223,8 +1230,9 @@ _pyarray_correlate(PyArrayObject *ap1, PyArrayObject *ap2, int typenum,
     /*
      * Need to choose an output array that can hold a sum
      * -- use priority to determine which subtype.
+     * ret is the array that will be returned as the answer
      */
-    ret = new_array_for_sum(ap1, ap2, NULL, 1, &length, typenum);   /* answer */
+    ret = new_array_for_sum(ap1, ap2, NULL, 1, &length, typenum);
     if (ret == NULL) {
         return NULL;
     }
@@ -1246,18 +1254,24 @@ _pyarray_correlate(PyArrayObject *ap1, PyArrayObject *ap2, int typenum,
 
     lag = minlag;
     maxleft = (0 < maxlag ? 0 : maxlag);
-    for (lag = minlag; lag < maxleft; lag+=lagstep) {      /* for lags where y is left of x */
+    for (lag = minlag; lag < maxleft; lag+=lagstep) {
+        /* for lags where y is left of x */
         n = n2 + lag;   /* overlap is length of y - lag */
         dot(ip1, is1, ip2 - lag*is2, is2, op, n, ret);
         op += os;       /* iterate over answer vector   */
     }
-    if (maxlag < n1 - n2) { /* if maxlag doesn't take y all the way to the end of x */
-        n11 = maxlag + n2;      /* relevant length of x is smaller                  */
+    if (maxlag < n1 - n2) {
+        /* if maxlag doesn't take y all the way to the end of x */
+        n11 = maxlag + n2;      /* relevant length of x is smaller */
     }
     else {
         n11 = n1;
-    }       /* starts at lag=minlag if minlag>0. Does lags where y entirely overlaps with x. */
-    if (lagstep == 1 && small_correlate(ip1 + lag*is1, is1, n11 - n2 + 1 - lag, PyArray_TYPE(ap1),
+    }
+    /* starts at lag=minlag if minlag>0.
+     * Does lags where y entirely overlaps with x.
+     */
+    if (lagstep == 1 && small_correlate(ip1 + lag*is1, is1,
+                                        n11 - n2 + 1 - lag, PyArray_TYPE(ap1),
                                         ip2, is2, n2, PyArray_TYPE(ap2),
                                         op, os)) {
         lag = n11 - n2 + 1;
@@ -1272,7 +1286,8 @@ _pyarray_correlate(PyArrayObject *ap1, PyArrayObject *ap2, int typenum,
     }
     maxright = (maxlag < n1  ? maxlag : n1 );
     tmplag = lag;
-    for (lag = tmplag; lag < maxright; lag+=lagstep) {     /* for lags where y is right of x */
+    for (lag = tmplag; lag < maxright; lag+=lagstep) {
+        /* for lags where y is right of x */
         n = n1 - lag;
         dot(ip1 + lag*is1, is1, ip2, is2, op, n, ret);
         op += os;

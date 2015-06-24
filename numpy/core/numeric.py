@@ -995,7 +995,7 @@ def convolve(a, v, mode='full', returns_lags=False):
           at each point of overlap, with an output shape of (N+M-1,). At
           the end-points of the convolution, the signals do not overlap
           completely, and boundary effects may be seen.  This corresponds
-          with a lag tuple of (-M+1, N-1, 1) for N>M or (-N+1, M+1, 1)
+          with a lag tuple of (-M+1, N, 1) for N>M or (-N+1, M, 1)
           for M>N.
 
         'same':
