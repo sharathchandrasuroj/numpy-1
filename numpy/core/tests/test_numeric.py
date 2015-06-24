@@ -1946,7 +1946,7 @@ class TestLikeFuncs(TestCase):
         self.check_like_function(np.full_like, 123.456, True)
         self.check_like_function(np.full_like, np.inf, True)
 
-class _TestCorrelate(TestCase):
+class TestCorrelate(TestCase):
     def _setup(self, dt):
         self.x = np.array([1, 2, 3, 4, 5], dtype=dt)
         self.xs = np.arange(1, 20)[::3]
@@ -1965,12 +1965,11 @@ class _TestCorrelate(TestCase):
 
     def test_float(self):
         self._setup(np.float)
-        lagvec = np.arange(1)
-        z, lagvec = np.correlate(self.x, self.y, 'full', old_behavior=self.old_behavior,returns_lags=True)
+        z, lagvec = np.correlate(self.x, self.y, 'full', returns_lags=True)
         assert_array_almost_equal(z, self.z1)
         assert_equal(lagvec.size, z.size)
         assert_array_equal(lagvec, np.arange(-self.y.size + 1, self.x.size))
-        z, lagvec = np.correlate(self.x, self.y, 'same', old_behavior=self.old_behavior, returns_lags=True)
+        z, lagvec = np.correlate(self.x, self.y, 'same', returns_lags=True)
         assert_array_almost_equal(z, self.z1s)
         assert_array_almost_equal(z, self.z1[lagvec+self.y.size-1])
         assert_equal(lagvec.size, z.size)
@@ -1978,7 +1977,7 @@ class _TestCorrelate(TestCase):
             assert_array_equal(lagvec, np.arange(-int(self.y.size/2), self.x.size - int(self.y.size/2)))
         else:
             assert_array_equal(lagvec, np.arange(-self.y.size + int(self.x.size/2) + 1, int(self.x.size/2) + 1))
-        z, lagvec = np.correlate(self.x, self.y, 'valid', old_behavior=self.old_behavior, returns_lags=True)
+        z, lagvec = np.correlate(self.x, self.y, 'valid', returns_lags=True)
         assert_array_almost_equal(z, self.z1v)
         assert_array_almost_equal(z, self.z1[lagvec+self.y.size-1])
         assert_equal(lagvec.size, z.size)
@@ -1987,13 +1986,13 @@ class _TestCorrelate(TestCase):
         else:
             assert_array_equal(lagvec, np.arange(self.x.size - self.y.size, 1))
 
-        z = np.correlate(self.x, self.y[:-1], 'full', old_behavior=self.old_behavior)
+        z = np.correlate(self.x, self.y[:-1], 'full')
         assert_array_almost_equal(z, self.z1_4)
-        z, lagvec = np.correlate(self.y, self.x, 'full', old_behavior=self.old_behavior, returns_lags=True)
+        z, lagvec = np.correlate(self.y, self.x, 'full', returns_lags=True)
         assert_array_almost_equal(z, self.z2)
         assert_equal(lagvec.size, z.size)
         assert_array_equal(lagvec, np.arange(-self.x.size + 1, self.y.size))
-        z, lagvec = np.correlate(self.y, self.x, 'same', old_behavior=self.old_behavior, returns_lags=True)
+        z, lagvec = np.correlate(self.y, self.x, 'same', returns_lags=True)
         assert_array_almost_equal(z, self.z2s)
         assert_array_almost_equal(z, self.z2[lagvec+self.x.size-1])
         assert_equal(lagvec.size, z.size)
@@ -2001,7 +2000,7 @@ class _TestCorrelate(TestCase):
             assert_array_equal(lagvec, np.arange(-int(self.x.size/2), self.y.size - int(self.x.size/2)))
         else:
             assert_array_equal(lagvec, np.arange(-self.x.size + int(self.y.size/2) + 1, int(self.y.size/2) + 1))
-        z, lagvec = np.correlate(self.y, self.x, 'valid', old_behavior=self.old_behavior, returns_lags=True)
+        z, lagvec = np.correlate(self.y, self.x, 'valid', returns_lags=True)
         assert_array_almost_equal(z, self.z2v)
         assert_array_almost_equal(z, self.z2[lagvec+self.x.size-1])
         assert_equal(lagvec.size, z.size)
@@ -2009,17 +2008,16 @@ class _TestCorrelate(TestCase):
             assert_array_equal(lagvec, np.arange(0, self.y.size - self.x.size + 1))
         else:
             assert_array_equal(lagvec, np.arange(self.y.size - self.x.size, 1))
-        z = np.correlate(self.x[::-1], self.y, 'full', old_behavior=self.old_behavior)
+        z = np.correlate(self.x[::-1], self.y, 'full')
         assert_array_almost_equal(z, self.z1r)
-        z = np.correlate(self.y, self.x[::-1], 'full', old_behavior=self.old_behavior)
+        z = np.correlate(self.y, self.x[::-1], 'full')
         assert_array_almost_equal(z, self.z2r)
-        z = np.correlate(self.xs, self.y, 'full', old_behavior=self.old_behavior)
+        z = np.correlate(self.xs, self.y, 'full')
         assert_array_almost_equal(z, self.zs)
 
     def test_lags(self):
         self._setup(np.float)
         longlen = max(self.x.size, self.y.size)
-        lagvec = np.arange(1)
         maxlag = 3 + longlen
         minlag = -2
         lagstep = 2
@@ -2077,9 +2075,9 @@ class _TestCorrelate(TestCase):
 
     def test_object(self):
         self._setup(Decimal)
-        z = np.correlate(self.x, self.y, 'full', old_behavior=self.old_behavior)
+        z = np.correlate(self.x, self.y, 'full')
         assert_array_almost_equal(z, self.z1)
-        z = np.correlate(self.y, self.x, 'full', old_behavior=self.old_behavior)
+        z = np.correlate(self.y, self.x, 'full')
         assert_array_almost_equal(z, self.z2)
 
     def test_no_overwrite(self):
@@ -2089,45 +2087,12 @@ class _TestCorrelate(TestCase):
         assert_array_equal(d, np.ones(100))
         assert_array_equal(k, np.ones(3))
 
-class TestCorrelate(_TestCorrelate):
-    old_behavior = True
-    def _setup(self, dt):
-        # correlate uses an unconventional definition so that correlate(a, b)
-        # == correlate(b, a), so force the corresponding outputs to be the same
-        # as well
-        _TestCorrelate._setup(self, dt)
-        self.z2 = self.z1
-        self.z2r = self.z1r
-        self.z2s = self.z1s
-        self.z2v = self.z1v
-
-    @dec.deprecated()
-    def test_complex(self):
-        x = np.array([1, 2, 3, 4+1j], dtype=np.complex)
-        y = np.array([-1, -2j, 3+1j], dtype=np.complex)
-        r_z = np.array([3+1j, 6, 8-1j, 9+1j, -1-8j, -4-1j], dtype=np.complex)
-        z = np.correlate(x, y, 'full', old_behavior=self.old_behavior)
-        assert_array_almost_equal(z, r_z)
-
-    @dec.deprecated()
-    def test_float(self):
-        _TestCorrelate.test_float(self)
-
-    @dec.deprecated()
-    def test_object(self):
-        _TestCorrelate.test_object(self)
-
-class TestCorrelateNew(_TestCorrelate):
-    old_behavior = False
     def test_complex(self):
         x = np.array([1, 2, 3, 4+1j], dtype=np.complex)
         y = np.array([-1, -2j, 3+1j], dtype=np.complex)
         r_z = np.array([3-1j, 6, 8+1j, 11+5j, -5+8j, -4-1j], dtype=np.complex)
-        #z = np.acorrelate(x, y, 'full')
-        #assert_array_almost_equal(z, r_z)
-
         r_z = r_z[::-1].conjugate()
-        z = np.correlate(y, x, 'full', old_behavior=self.old_behavior)
+        z = np.correlate(y, x, 'full')
         assert_array_almost_equal(z, r_z)
 
 class TestConvolve(TestCase):

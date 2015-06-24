@@ -858,7 +858,7 @@ def _lags_from_mode(alen, vlen, mode):
             lags = (-int(ceil((lags[1]-lags[0])/float(lags[2])))*lags[2]-lags[0]+lags[2], -lags[0]+lags[2], lags[2])
     return mode, lags
 
-def correlate(a, v, mode='valid', old_behavior=False, returns_lags=False):
+def correlate(a, v, mode='valid', returns_lags=False):
     """
     Cross-correlation of two 1-dimensional sequences.
 
@@ -877,17 +877,15 @@ def correlate(a, v, mode='valid', old_behavior=False, returns_lags=False):
     mode : int, int tuple, or {'valid', 'same', 'full'}, optional
         Refer to the `convolve` docstring.  Note that the default
         is `valid`, unlike `convolve`, which uses `full`.
-    old_behavior : bool, optional
-        If True, uses the old behavior from Numeric,
-        (correlate(a,v) == correlate(v,a), and the conjugate is not taken
-        for complex arrays). If False, uses the conventional signal
-        processing definition.  False is default.
     returns_lags : bool, optional
         If True, the function returns a lagvector array in addition to the
         cross-correlation result.  The lagvector contains the indices of
         the lags for which the cross-correlation was calculated.  It is
         the same length as the return array, and corresponds one-to-one.
         False is default.
+    old_behavior : bool
+        `old_behavior` was removed in NumPy 1.10. If you need the old
+        behavior, use `multiarray.correlate`.
 
     Returns
     -------
@@ -900,6 +898,7 @@ def correlate(a, v, mode='valid', old_behavior=False, returns_lags=False):
     See Also
     --------
     convolve : Discrete, linear convolution of two one-dimensional sequences.
+    multiarray.correlate : Old, no conjugate, version of correlate.
 
     Notes
     -----
@@ -937,26 +936,10 @@ def correlate(a, v, mode='valid', old_behavior=False, returns_lags=False):
 
     """
     mode, lags = _lags_from_mode(len(a), len(v), mode)
-
-# the old behavior should be made available under a different name, see thread
-# http://thread.gmane.org/gmane.comp.python.numeric.general/12609/focus=12630
-    if old_behavior:
-        warnings.warn("""
-The old behavior of correlate was deprecated for 1.4.0, and will be completely removed
-for NumPy 2.0.
-
-The new behavior fits the conventional definition of correlation: inputs are
-never swapped, and the second argument is conjugated for complex arrays.""",
-            DeprecationWarning)
-        if returns_lags:
-            return multiarray.correlate(a, v, mode, lags[0], lags[1], lags[2]), arange(lags[0], lags[1], lags[2])
-        else:
-            return multiarray.correlate(a, v, mode, lags[0], lags[1], lags[2])
+    if returns_lags:
+        return multiarray.correlate2(a, v, mode, lags[0], lags[1], lags[2]), arange(lags[0], lags[1], lags[2])
     else:
-        if returns_lags:
-            return multiarray.correlate2(a, v, mode, lags[0], lags[1], lags[2]), arange(lags[0], lags[1], lags[2])
-        else:
-            return multiarray.correlate2(a, v, mode, lags[0], lags[1], lags[2])
+        return multiarray.correlate2(a, v, mode, lags[0], lags[1], lags[2])
 
 def convolve(a, v, mode='full', returns_lags=False):
     """
