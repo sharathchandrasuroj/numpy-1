@@ -1134,6 +1134,8 @@ PyArray_CopyAndTranspose(PyObject *op)
     return (PyObject *)ret;
 }
 
+
+
 /*
  * Implementation which is common between PyArray_Correlate
  * and PyArray_Correlate2.
@@ -1227,7 +1229,9 @@ _pyarray_correlate(PyArrayObject *ap1, PyArrayObject *ap2, int typenum,
     if (ret == NULL) {
         return NULL;
     }
-    PyArray_FILLWBYTE(ret, 0);
+    if (length > 0) {
+        PyArray_FILLWBYTE(ret, 0);
+    }
     dot = PyArray_DESCR(ret)->f->dotfunc;
     if (dot == NULL) {
         PyErr_SetString(PyExc_ValueError,
@@ -1244,8 +1248,16 @@ _pyarray_correlate(PyArrayObject *ap1, PyArrayObject *ap2, int typenum,
     os = PyArray_DESCR(ret)->elsize;    /* answer strides   */
 
     lag = minlag;
+    if (lag < -n2+1) {
+        /* if minlag is before any overlap between the vectors,
+         * then skip to first relevant lag
+         */
+        op += os*((-n2+1) - lag);
+        lag = -n2+1;
+    }
     maxleft = (0 < maxlag ? 0 : maxlag);
-    for (lag = minlag; lag < maxleft; lag+=lagstep) {
+    tmplag = lag;
+    for (lag = tmplag; lag < maxleft; lag+=lagstep) {
         /* for lags where y is left of x */
         n = n2 + lag;   /* overlap is length of y - lag */
         dot(ip1, is1, ip2 - lag*is2, is2, op, n, ret);
@@ -1269,7 +1281,7 @@ _pyarray_correlate(PyArrayObject *ap1, PyArrayObject *ap2, int typenum,
         lag = n11 - n2 + 1;
         op += os * (n11 - n2 + 1);
     }
-    else {
+    else if (lag < maxlag) {
         tmplag = lag;
         for (lag = tmplag; lag < (n11 - n2 + 1); lag+=lagstep) {
             dot(ip1 + lag*is1, is1, ip2, is2, op, n2, ret);
@@ -1350,13 +1362,13 @@ _pyarray_revert(PyArrayObject *ret)
 }
 
 /*NUMPY_API
- * correlate(a1,a2,mode)
+ * correlate(a1,a2,mode,minlag,maxlag,lagstep)
  *
- * This function computes the usual correlation (correlate(a1, a2) !=
- * correlate(a2, a1), and conjugate the second argument for complex inputs
+ * This function correlates a1 with a2.  mode=0,1,2 retains functionality of PyArray_Correlate2
+ * mode=3 allows for specification of minlag, maxlag, and lagstep.
  */
 NPY_NO_EXPORT PyObject *
-PyArray_Correlate2(PyObject *op1, PyObject *op2, int mode, npy_intp minlag, npy_intp maxlag, npy_intp lagstep)
+PyArray_CorrelateLags(PyObject *op1, PyObject *op2, int mode, npy_intp minlag, npy_intp maxlag, npy_intp lagstep)
 {
     PyArrayObject *ap1, *ap2, *ret = NULL;
     int typenum;
@@ -1421,15 +1433,34 @@ clean_ap1:
 }
 
 /*NUMPY_API
+ * correlate(a1,a2,mode)
+ *
+ * This function computes the usual correlation (correlate(a1, a2) !=
+ * correlate(a2, a1), and conjugate the second argument for complex inputs
+ */
+NPY_NO_EXPORT PyObject *
+PyArray_Correlate2(PyObject *op1, PyObject *op2, int mode)
+{
+    npy_intp z = 0;
+    /* For modes other than 3 (which was not a mode before maxlags were added),
+    minlag, maxlag, and lagstep (the last three arguments) will be ignored */
+    return PyArray_CorrelateLags(op1, op2, mode, z, z, z);
+}
+
+/*NUMPY_API
  * Numeric.correlate(a1,a2,mode)
  */
 NPY_NO_EXPORT PyObject *
-PyArray_Correlate(PyObject *op1, PyObject *op2, int mode, npy_intp minlag, npy_intp maxlag, npy_intp lagstep)
+PyArray_Correlate(PyObject *op1, PyObject *op2, int mode)
 {
     PyArrayObject *ap1, *ap2, *ret = NULL;
     int typenum;
     int unused;
     PyArray_Descr *typec;
+
+    npy_intp z = 0;
+    /* For modes other than 3 (which was not a mode before maxlags were added),
+    minlag, maxlag, and lagstep (the last three arguments of _pyarray_correlate) will be ignored */
 
     typenum = PyArray_ObjectType(op1, 0);
     typenum = PyArray_ObjectType(op2, typenum);
@@ -1448,7 +1479,7 @@ PyArray_Correlate(PyObject *op1, PyObject *op2, int mode, npy_intp minlag, npy_i
         goto fail;
     }
 
-    ret = _pyarray_correlate(ap1, ap2, typenum, mode, &unused, minlag, maxlag, lagstep);
+    ret = _pyarray_correlate(ap1, ap2, typenum, mode, &unused, z, z, z);
     if(ret == NULL) {
         goto fail;
     }
@@ -2940,34 +2971,18 @@ array_fastCopyAndTranspose(PyObject *NPY_UNUSED(dummy), PyObject *args)
 }
 
 static PyObject *
-array_correlate(PyObject *NPY_UNUSED(dummy), PyObject *args, PyObject *kwds)
-{
-    PyObject *shape, *a0;
-    int mode = 0; /* input modes other than 3 cause minlag, maxlag, and lagstep to be ignored */
-    npy_intp maxlag = 0, minlag = 0, lagstep = 0;
-    static char *kwlist[] = {"a", "v", "mode", "minlag", "maxlag", "lagstep", NULL};
-
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OO|innn", kwlist,
-                &a0, &shape, &mode, &minlag, &maxlag, &lagstep)) {
-        return NULL;
-    }
-    return PyArray_Correlate(a0, shape, mode, minlag, maxlag, lagstep);
-}
-
-static PyObject *
 array_correlate2(PyObject *NPY_UNUSED(dummy), PyObject *args, PyObject *kwds)
 {
     PyObject *shape, *a0;
     int mode = 0;
     npy_intp maxlag = 0, minlag = 0, lagstep = 0;
-    PyObject *tmp;
     static char *kwlist[] = {"a", "v", "mode", "minlag", "maxlag", "lagstep", NULL};
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "OO|innn", kwlist,
                 &a0, &shape, &mode, &minlag, &maxlag, &lagstep)) {
         return NULL;
     }
-    return PyArray_Correlate2(a0, shape, mode, minlag, maxlag, lagstep);
+    return PyArray_CorrelateLags(a0, shape, mode, minlag, maxlag, lagstep);
 }
 
 static PyObject *
@@ -4154,9 +4169,6 @@ static struct PyMethodDef array_module_methods[] = {
     {"_fastCopyAndTranspose",
         (PyCFunction)array_fastCopyAndTranspose,
         METH_VARARGS, NULL},
-    {"correlate",
-        (PyCFunction)array_correlate,
-        METH_VARARGS | METH_KEYWORDS, NULL},
     {"correlate2",
         (PyCFunction)array_correlate2,
         METH_VARARGS | METH_KEYWORDS, NULL},
