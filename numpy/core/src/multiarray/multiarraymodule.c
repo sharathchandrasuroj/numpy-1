@@ -1155,7 +1155,7 @@ _pyarray_correlate(PyArrayObject *ap1, PyArrayObject *ap2, int typenum,
 
     NPY_BEGIN_THREADS_DEF;
 
-    if (lagstep == NPY_MAX_INTP || lagstep == 0) {
+    if (lagstep == 0 || mode != 3) {
         lagstep = 1;
     }
 
@@ -1174,9 +1174,7 @@ _pyarray_correlate(PyArrayObject *ap1, PyArrayObject *ap2, int typenum,
         lagstep = -lagstep;
     }
 
-    if (maxlag == NPY_MAX_INTP || minlag == NPY_MAX_INTP) {
     switch(mode) {
-    lagstep = 1;
     case 0:
         /* mode = 'valid' */
         minlag = 0;
@@ -1194,20 +1192,13 @@ _pyarray_correlate(PyArrayObject *ap1, PyArrayObject *ap2, int typenum,
         break;
     case 3:
         /* mode = 'maxlag' */
-        if (maxlag == NPY_MAX_INTP) {
-            /* nothing good to do with situation */
-            minlag = -n2 + 1;
-            maxlag = n1;
-        }
-        else if (minlag == NPY_MAX_INTP) {
-            minlag = (maxlag > n2 ? -n2+1 : -maxlag+1);
-        }
+        /* use minlag, maxlag, and lagstep that were passed in */
         break;
     default:
         PyErr_SetString(PyExc_ValueError, "mode must be 0, 1, 2, or 3");
         return NULL;
     }
-    }
+
 
     if (lagstep < 0) {
         *inverted = 1;
@@ -1270,10 +1261,11 @@ _pyarray_correlate(PyArrayObject *ap1, PyArrayObject *ap2, int typenum,
     /* starts at lag=minlag if minlag>0.
      * Does lags where y entirely overlaps with x.
      */
-    if (lagstep == 1 && small_correlate(ip1 + lag*is1, is1,
-                                        n11 - n2 + 1 - lag, PyArray_TYPE(ap1),
-                                        ip2, is2, n2, PyArray_TYPE(ap2),
-                                        op, os)) {
+    if (lagstep == 1 && lag < maxlag &&
+            small_correlate(ip1 + lag*is1, is1,
+                            n11 - n2 + 1 - lag, PyArray_TYPE(ap1),
+                            ip2, is2, n2, PyArray_TYPE(ap2),
+                            op, os)) {
         lag = n11 - n2 + 1;
         op += os * (n11 - n2 + 1);
     }
@@ -2951,8 +2943,8 @@ static PyObject *
 array_correlate(PyObject *NPY_UNUSED(dummy), PyObject *args, PyObject *kwds)
 {
     PyObject *shape, *a0;
-    int mode = 0;
-    npy_intp maxlag = NPY_MAX_INTP, minlag = NPY_MAX_INTP, lagstep = NPY_MAX_INTP;
+    int mode = 0; /* input modes other than 3 cause minlag, maxlag, and lagstep to be ignored */
+    npy_intp maxlag = 0, minlag = 0, lagstep = 0;
     static char *kwlist[] = {"a", "v", "mode", "minlag", "maxlag", "lagstep", NULL};
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "OO|innn", kwlist,
@@ -2967,7 +2959,7 @@ array_correlate2(PyObject *NPY_UNUSED(dummy), PyObject *args, PyObject *kwds)
 {
     PyObject *shape, *a0;
     int mode = 0;
-    npy_intp maxlag = NPY_MAX_INTP, minlag = NPY_MAX_INTP, lagstep = NPY_MAX_INTP;
+    npy_intp maxlag = 0, minlag = 0, lagstep = 0;
     PyObject *tmp;
     static char *kwlist[] = {"a", "v", "mode", "minlag", "maxlag", "lagstep", NULL};
 

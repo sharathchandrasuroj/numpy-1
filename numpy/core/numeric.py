@@ -937,9 +937,9 @@ def correlate(a, v, mode='valid', returns_lags=False):
     """
     mode, lags = _lags_from_mode(len(a), len(v), mode)
     if returns_lags:
-        return multiarray.correlate2(a, v, mode, lags[0], lags[1], lags[2]), arange(lags[0], lags[1], lags[2])
+        return multiarray.correlate2(a, v, 3, lags[0], lags[1], lags[2]), arange(lags[0], lags[1], lags[2])
     else:
-        return multiarray.correlate2(a, v, mode, lags[0], lags[1], lags[2])
+        return multiarray.correlate2(a, v, 3, lags[0], lags[1], lags[2])
 
 def convolve(a, v, mode='full', returns_lags=False):
     """
@@ -1083,9 +1083,9 @@ def convolve(a, v, mode='full', returns_lags=False):
         raise ValueError('v cannot be empty')
     mode, lags = _lags_from_mode(len(a), len(v), mode)
     if returns_lags:
-        return multiarray.correlate2(a, v[::-1], mode, lags[0], lags[1], lags[2]), arange(lags[0], lags[1], lags[2])
+        return multiarray.correlate2(a, v[::-1], 3, lags[0], lags[1], lags[2]), arange(lags[0], lags[1], lags[2])
     else:
-        return multiarray.correlate2(a, v[::-1], mode, lags[0], lags[1], lags[2])
+        return multiarray.correlate2(a, v[::-1], 3, lags[0], lags[1], lags[2])
 
 def outer(a, b, out=None):
     """
