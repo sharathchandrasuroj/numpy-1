@@ -1308,7 +1308,13 @@ def diagonal(a, offset=0, axis1=0, axis2=1):
         # Make diagonal of matrix 1-D to preserve backward compatibility.
         return asarray(a).diagonal(offset, axis1, axis2)
     else:
-        return asanyarray(a).diagonal(offset, axis1, axis2)
+        try:
+            diagonal = a.diagonal
+        except AttributeError:
+            res = asanyarray(a).diagonal(offset, axis1, axis2)
+        else:
+            res = diagonal(offset, axis1, axis2)
+        return res
 
 
 def trace(a, offset=0, axis1=0, axis2=1, dtype=None, out=None):
