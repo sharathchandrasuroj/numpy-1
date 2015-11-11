@@ -345,6 +345,7 @@ multiarray_funcs_api = {
     'PyArray_CheckAnyScalarExact':          (300, NonNull(1)),
     # End 1.10 API
     'PyArray_CorrelateLags':                (301,),
+    # End 1.11 API
 }
 
 ufunc_types_api = {
