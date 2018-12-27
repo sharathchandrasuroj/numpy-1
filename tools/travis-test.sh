@@ -27,16 +27,12 @@ fi
 # make some warnings fatal, mostly to match windows compilers
 werrors="-Werror=vla -Werror=nonnull -Werror=pointer-arith"
 
-# build with c99 by default
-
 setup_base()
 {
   # use default python flags but remoge sign-compare
   sysflags="$($PYTHON -c "from distutils import sysconfig; \
     print (sysconfig.get_config_var('CFLAGS'))")"
   export CFLAGS="$sysflags $werrors -Wlogical-op -Wno-sign-compare"
-  # use c99
-  export CFLAGS=$CFLAGS" -std=c99"
   # We used to use 'setup.py install' here, but that has the terrible
   # behaviour that if a copy of the package is already installed in the
   # install location, then the new copy just gets dropped on top of it.
@@ -133,8 +129,6 @@ if [ -n "$USE_WHEEL" ] && [ $# -eq 0 ]; then
   $PIP install -U virtualenv
   # ensure some warnings are not issued
   export CFLAGS=$CFLAGS" -Wno-sign-compare -Wno-unused-result"
-  # use c99
-  export CFLAGS=$CFLAGS" -std=c99"
   # adjust gcc flags if C coverage requested
   if [ -n "$RUN_COVERAGE" ]; then
      export NPY_DISTUTILS_APPEND_FLAGS=1
@@ -165,8 +159,6 @@ elif [ -n "$USE_SDIST" ] && [ $# -eq 0 ]; then
   $PYTHON -c "import fcntl; fcntl.fcntl(1, fcntl.F_SETFL, 0)"
   # ensure some warnings are not issued
   export CFLAGS=$CFLAGS" -Wno-sign-compare -Wno-unused-result"
-  # use c99
-  export CFLAGS=$CFLAGS" -std=c99"
   $PYTHON setup.py sdist
   # Make another virtualenv to install into
   virtualenv --python=`which $PYTHON` venv-for-wheel
