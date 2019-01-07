@@ -17,11 +17,14 @@ from distutils.ccompiler import CompileError, LinkError
 import distutils
 from numpy.distutils.exec_command import filepath_from_subprocess_output
 from numpy.distutils.mingw32ccompiler import generate_manifest
-from numpy.distutils.command.autodist import (check_gcc_function_attribute,
-                                              check_gcc_variable_attribute,
-                                              check_inline,
-                                              check_restrict,
-                                              check_compiler_gcc4)
+from numpy.distutils.command.autodist import (
+    check_gcc_function_attribute,
+    check_gcc_variable_attribute,
+    check_inline,
+    check_restrict,
+    check_compiler_gcc4,
+    check_compiler_gcc_c99_default_okay)
+
 from numpy.distutils.compat import get_exception
 
 LANG_EXT['f77'] = '.f'
@@ -420,6 +423,11 @@ int main (void)
     def check_compiler_gcc4(self):
         """Return True if the C compiler is gcc >= 4."""
         return check_compiler_gcc4(self)
+
+    def check_compiler_gcc_c99_default_okay(self):
+        """Return True if the C compiler is GCC and accepts C99 code by
+        default."""
+        return check_compiler_gcc_c99_default_okay(self)
 
     def check_gcc_function_attribute(self, attribute, name):
         return check_gcc_function_attribute(self, attribute, name)

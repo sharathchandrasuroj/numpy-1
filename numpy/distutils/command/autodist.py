@@ -61,6 +61,29 @@ main()
     return cmd.try_compile(body, None, None)
 
 
+def check_compiler_gcc_c99_default_okay(cmd):
+    """Return True if the C compiler is GCC and accepts C99 code by default.
+
+    This is the case for GCC >= 5.1, which switched the default from
+    ``-std=gnu90`` to ``-std=gnu11``.
+
+    Note that this also works for Clang, since it defines __GNUC__ and has used
+    C11 as the default language level since 2014.
+    """
+    cmd._check_compiler()
+    body = """
+int
+main()
+{
+#if (! defined __GNUC__) || (__GNUC__ < 5)
+#error gcc >= 5.1 required
+#endif
+    return 0;
+}
+"""
+    return cmd.try_compile(body, None, None)
+
+
 def check_gcc_function_attribute(cmd, attribute, name):
     """Return True if the given function attribute is supported."""
     cmd._check_compiler()
