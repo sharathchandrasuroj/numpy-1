@@ -2,7 +2,8 @@
 -------------------------------------
 
 Strengths/advantages of ``__array_function__`` (and ``__array_ufunc__`` - we
-will treat them as the same from now on) are:
+will treat these two protocols as one in this document since they're almost
+identical) are:
 
 1. It is lightweight and has low overhead.
 2. It composes well without end users having to do anything, or libraries
@@ -15,9 +16,8 @@ dispatch logic directly to an array object.  What isn't possible with
 ``__array_function__``:
 
 1. Override functions that do not take an array-like argument
-2. Override anything other than functions (e.g. ``np.errstate``, ``np.ufunc``,
-   ``np.mgrid``, ``np.random.RandomState``).
-3. Write overrides for functions with those overrides expecting `numpy.ndarray`
+2. Override anything other than functions
+3. Write overrides for functions with those overrides expecting ``numpy.ndarray``
    input. Or more generally: have alternative implementations of any function
    for the same array type act as an override.
 4. Write overrides outside of the package that provides the array-like object.
@@ -124,6 +124,38 @@ example dispatching on dtype to specialized kernels is very common.
 
 What happens if ``__array_function__`` and ``unumpy`` are both active
 ---------------------------------------------------------------------
+
+*Note: both being active occurs if a user does ``import unumpy as np`` and uses
+functions from that namespace, or if we would add ``unumpy`` to NumPy and make
+it default. For the discussion in this section those two situations are the
+same.*
+
+By default, ``unumpy`` will only set NumPy as the global backend. So then a
+call like ``np.mean(x)`` will go through ``unumpy`` first, dispatch to its
+``numpy_backend``, and then ``__array_function__`` kicks in and dispatch based
+on ``x.__array_function__`` will happen.
+
+In case a user has explicitly chosen a backend *other* than ``numpy_backend``,
+then ``unumpy`` will dispatch to that and the ``__array_function__`` dispatch
+won't happen.
+
+Recommended usage for array library authors
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Library authors should write code that makes use of ``__array_function__`` if
+possible, and ``unumpy`` if needed. Example::
+
+    TODO  # only sensible to use unumpy with the proposed ``determine_backend`` I think
+
+
+Recommended usage for library authors that support multiple array libraries
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+TODO
+
+
+Recommended usage for end users
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 TODO
 
