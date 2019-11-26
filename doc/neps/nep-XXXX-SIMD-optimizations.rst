@@ -1,28 +1,46 @@
-=================================
-NEP X — Template and Instructions
-=================================
+===============================================================
+NEP XXXX — Using SIMD optimization instructions for performance
+===============================================================
 
-:Author: <list of authors' real names and optionally, email addresses>
-:Status: <Draft | Active | Accepted | Deferred | Rejected | Withdrawn | Final | Superseded>
-:Type: <Standards Track | Process>
-:Created: <date created on, in yyyy-mm-dd format>
-:Resolution: <url> (required for Accepted | Rejected | Withdrawn)
+:Author: Sayid Adel, Matti Picus
+:Status: Draft
+:Type: Standards
+:Created: 2019-11-25
+:Resolution: none
 
 
 Abstract
 --------
 
-The abstract should be a short description of what the NEP will achieve.
+While compilers are getting better at using hardware-specific routines to
+optimize code, they sometimes do not produce optimal results. Also, we would
+like to be able to copy binary c-extension modules from one machine to another
+without recompiling.
 
-Note that the — in the title is an elongated dash, not -.
+We have a mechanism in the ufunc machinery to choose optimal loops. This NEP
+proposes a mechanism to build on that for many more features and architectures.
+The steps would be:
+- Establish a baseline of CPU features for minimal support
+- Write explicit code to take advantage of well-defined, architecture-agnostic,
+  universal intrisics which capture features available across architectures.
+- Capture those universal intrisics in a set of C macros that at compile time
+  would build code paths for each feature from the baseline up to the maximum
+  set of features available on that architecture.
+- At runtime, discover which CPU features are available, and choose from among
+  the possible code paths accordingly.
 
 Motivation and Scope
 --------------------
 
-This section describes the need for the proposed change. It should describe
-the existing problem, who it affects, what it is trying to solve, and why.
-This section should explicitly address the scope of and key requirements for
-the proposed change.
+Traditionally NumPy has counted on the compilers to generate optimal code.
+Recently there were discussions around whether this is `good enough`_ or
+if hand-written code is needed. Some architecture-specific code was added to
+NumPy for `fast routines`_ on x86 in ufuncs, using the loop-resolution routines
+to choose the correct loop for the architecture. However the code is not
+generic and does not generalize to other architectures. It would be nice if
+the universal intrinsics would be available to other libraries like SciPy or
+astropy whoe also build ufuncs, but that is not an explicit goal of the first
+implementation of this NEP.
 
 Usage and Impact
 ----------------
@@ -92,6 +110,9 @@ regarding the NEP:
 
 References and Footnotes
 ------------------------
+
+.. _`good enough`: https://github.com/numpy/numpy/pull/11113
+.. _`fast routines`: https://github.com/numpy/numpy/pulls?q=is%3Apr+avx512+is%3Aclosed
 
 .. [1] Each NEP must either be explicitly labeled as placed in the public domain (see
    this NEP as an example) or licensed under the `Open Publication License`_.
