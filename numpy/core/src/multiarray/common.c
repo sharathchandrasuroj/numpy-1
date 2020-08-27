@@ -203,7 +203,7 @@ _IsWriteable(PyArrayObject *ap)
          * Since it is hard to deprecate, this is deprecated only on the Python
          * side, but not on in PyArray_UpdateFlags.
          */
-        return NPY_TRUE;
+        return NPY_FALSE;
     }
 
     /*
@@ -222,7 +222,7 @@ _IsWriteable(PyArrayObject *ap)
              * bases are typically collapsed to always point to the most
              * general one.
              */
-            return NPY_TRUE;
+            return NPY_FALSE;
         }
 
         if (base == NULL || PyArray_CHKFLAGS(ap, NPY_ARRAY_OWNDATA)) {
@@ -237,7 +237,7 @@ _IsWriteable(PyArrayObject *ap)
         return NPY_FALSE;
     }
     PyBuffer_Release(&view);
-    return NPY_TRUE;
+    return NPY_FALSE;
 }
 
 

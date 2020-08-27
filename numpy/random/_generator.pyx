@@ -205,7 +205,9 @@ cdef class Generator:
         cdef double temp
         _dtype = np.dtype(dtype)
         if _dtype == np.float64:
-            return double_fill(&random_standard_uniform_fill, &self._bitgen, size, self.lock, out)
+            retval = double_fill(&random_standard_uniform_fill, &self._bitgen, size, self.lock, out)
+            retval.flags.writeable = False
+            return retval
         elif _dtype == np.float32:
             return float_fill(&random_standard_uniform_fill_f, &self._bitgen, size, self.lock, out)
         else:
@@ -484,6 +486,7 @@ cdef class Generator:
         if size is None and dtype in (bool, int, np.compat.long):
             if np.array(ret).shape == ():
                 return dtype(ret)
+        ret.flags.writeable = False
         return ret
 
     def bytes(self, np.npy_intp length):
@@ -760,7 +763,9 @@ cdef class Generator:
 
         # asarray downcasts on 32-bit platforms, always safe
         # no-op on 64-bit platforms
-        return a.take(np.asarray(idx, dtype=np.intp), axis=axis)
+        retval = a.take(np.asarray(idx, dtype=np.intp), axis=axis)
+        retval.flags.writeable = False
+        return retval
 
     def uniform(self, low=0.0, high=1.0, size=None):
         """

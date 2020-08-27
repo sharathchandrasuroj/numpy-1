@@ -25,7 +25,7 @@ def asarray(a, dtype=None, order=None):
         By default, the data-type is inferred from the input data.
     order : {'C', 'F', 'A', 'K'}, optional
         Memory layout.  'A' and 'K' depend on the order of input array a.
-        'C' row-major (C-style), 
+        'C' row-major (C-style),
         'F' column-major (Fortran-style) memory representation.
         'A' (any) means 'F' if `a` is Fortran contiguous, 'C' otherwise
         'K' (keep) preserve input order
@@ -83,7 +83,9 @@ def asarray(a, dtype=None, order=None):
     True
 
     """
-    return array(a, dtype, copy=False, order=order)
+    a = array(a, dtype, copy=False, order=order)
+    a.flags.writeable = False
+    return a
 
 
 @set_module('numpy')
@@ -100,7 +102,7 @@ def asanyarray(a, dtype=None, order=None):
         By default, the data-type is inferred from the input data.
     order : {'C', 'F', 'A', 'K'}, optional
         Memory layout.  'A' and 'K' depend on the order of input array a.
-        'C' row-major (C-style), 
+        'C' row-major (C-style),
         'F' column-major (Fortran-style) memory representation.
         'A' (any) means 'F' if `a` is Fortran contiguous, 'C' otherwise
         'K' (keep) preserve input order
@@ -140,7 +142,9 @@ def asanyarray(a, dtype=None, order=None):
     True
 
     """
-    return array(a, dtype, copy=False, order=order, subok=True)
+    a = array(a, dtype, copy=False, order=order, subok=True)
+    a.flags.writeable = False
+    return a
 
 
 @set_module('numpy')
@@ -177,11 +181,13 @@ def ascontiguousarray(a, dtype=None):
     >>> x.flags['C_CONTIGUOUS']
     True
 
-    Note: This function returns an array with at least one-dimension (1-d) 
-    so it will not preserve 0-d arrays.  
+    Note: This function returns an array with at least one-dimension (1-d)
+    so it will not preserve 0-d arrays.
 
     """
-    return array(a, dtype, copy=False, order='C', ndmin=1)
+    a = array(a, dtype, copy=False, order='C', ndmin=1)
+    a.flags.writeable = False
+    return a
 
 
 @set_module('numpy')
@@ -218,11 +224,14 @@ def asfortranarray(a, dtype=None):
     >>> y.flags['F_CONTIGUOUS']
     True
 
-    Note: This function returns an array with at least one-dimension (1-d) 
-    so it will not preserve 0-d arrays.  
+    Note: This function returns an array with at least one-dimension (1-d)
+    so it will not preserve 0-d arrays.
 
     """
-    return array(a, dtype, copy=False, order='F', ndmin=1)
+    a = array(a, dtype, copy=False, order='F', ndmin=1)
+    a.flags.writeable = False
+    return a
+
 
 
 @set_module('numpy')

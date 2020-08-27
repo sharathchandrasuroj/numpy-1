@@ -96,6 +96,7 @@ cdef object random_raw(bitgen_t *bitgen, object lock, object size, object output
     with lock, nogil:
         for i in range(n):
             randoms_data[i] = bitgen.next_raw(bitgen.state)
+    randoms.flags.writeable = False
     return randoms
 
 cdef object prepare_cffi(bitgen_t *bitgen):
@@ -604,6 +605,7 @@ cdef object cont(void *func, void *state, object size, object lock, int narg,
                 randoms_data[i] = f3(state, _a, _b, _c)
 
     if out is None:
+        randoms.flags.writeable = False
         return randoms
     else:
         return out

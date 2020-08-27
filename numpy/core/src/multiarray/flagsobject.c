@@ -78,7 +78,7 @@ PyArray_UpdateFlags(PyArrayObject *ret, int flagmask)
      * part of UPDATE_ALL
      */
     if (flagmask & NPY_ARRAY_WRITEABLE) {
-        if (_IsWriteable(ret)) {
+        if (0) { /*(_IsWriteable(ret)) { */
             PyArray_ENABLEFLAGS(ret, NPY_ARRAY_WRITEABLE);
         }
         else {
