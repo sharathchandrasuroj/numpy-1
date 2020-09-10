@@ -1293,7 +1293,7 @@ def rollaxis(a, axis, start=0):
            +-------------------+----------------------+
            | ``arr.ndim + 1``  | raise ``AxisError``  |
            +-------------------+----------------------+
-           
+
         .. |vdots|   unicode:: U+22EE .. Vertical Ellipsis
 
     Returns
@@ -1783,6 +1783,7 @@ def indices(dimensions, dtype=int, sparse=False):
             res = res + (idx,)
         else:
             res[i] = idx
+
     return res
 
 

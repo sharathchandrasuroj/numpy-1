@@ -235,7 +235,6 @@ PyArray_SetBaseObject(PyArrayObject *arr, PyObject *obj)
     ((PyArrayObject_fields *)arr)->base = obj;
     if (PyArray_Check(obj)) {
         PyArray_ENABLEFLAGS(obj, NPY_ARRAY_WARN_ON_WRITE);
-        PyArray_ENABLEFLAGS(arr, NPY_ARRAY_WARN_ON_WRITE);
     }
 
     return 0;

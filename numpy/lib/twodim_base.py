@@ -209,7 +209,11 @@ def eye(N, M=None, k=0, dtype=float, order='C', *, like=None):
     m = zeros((N, M), dtype=dtype, order=order)
     if k >= M:
         return m
-    if k >= 0:
+    if k == 0:
+        for ii in range(N):
+            m[ii, ii] = 1
+        return m
+    elif k > 0:
         i = k
     else:
         i = (-k) * M
