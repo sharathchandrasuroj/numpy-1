@@ -2914,11 +2914,14 @@ class MaskedArray(ndarray):
                     if _data.dtype.names is not None:
                         def _recursive_or(a, b):
                             "do a|=b on each field of a, recursively"
+                            a.flags.writeable = True
                             for name in a.dtype.names:
                                 (af, bf) = (a[name], b[name])
                                 if af.dtype.names is not None:
                                     _recursive_or(af, bf)
                                 else:
+                                    # in-place union, seems problematic
+                                    af.flags.writeable = True
                                     af |= bf
 
                         _recursive_or(_data._mask, mask)
